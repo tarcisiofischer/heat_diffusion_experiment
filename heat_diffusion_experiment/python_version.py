@@ -1,5 +1,5 @@
+from six.moves import xrange
 import numpy as np
-from builtins import range
 
 def python_version(M, total_time=500.0):
     
@@ -16,9 +16,6 @@ def python_version(M, total_time=500.0):
     
     # Boundary conditions --------------------------------------------------------------------------------
     u = np.zeros((M,M),dtype=np.float64) # Initial temperature
-    for i in range(M):
-        u[M-1,i] = 25
-    
     u[M-1,:] = 25 # Temperature at top wall
     
     # , 'necessary dt: %f'%((0.9 * rho * cp * (l ** 2) / (4.0 * k)))
@@ -28,9 +25,9 @@ def python_version(M, total_time=500.0):
     B = rho * cp * V / dt # Transient term
 
     num_timesteps = int(total_time/dt)
-    for t in range(num_timesteps):
+    for t in xrange(num_timesteps):
         u0 = np.copy(u)        
-        for i in range(1,M-1):
-            for j in range(1,M-1):
+        for i in xrange(1,M-1):
+            for j in xrange(1,M-1):
                 u[i,j] = (f*u0[i,j+1] + f*u0[i,j-1] + f*u0[i+1,j] + f*u0[i-1,j] + B*u0[i,j]) / (B + 4*f)
     return u
