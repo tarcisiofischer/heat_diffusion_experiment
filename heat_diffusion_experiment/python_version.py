@@ -1,7 +1,7 @@
 from six.moves import xrange
 import numpy as np
 
-def python_version(M, total_time=500.0):
+def python_version(M, num_timesteps=0, total_time=500.0):
     
     # Physical properties --------------------------------------------------------------------------------
     k = 385.0
@@ -20,11 +20,12 @@ def python_version(M, total_time=500.0):
     
     # , 'necessary dt: %f'%((0.9 * rho * cp * (l ** 2) / (4.0 * k)))
     dt = (0.9 * rho * cp * (l ** 2) / (4.0 * k))
-
+    if num_timesteps == 0:
+        num_timesteps = int(total_time/dt)
+    
     f = k * A / l # Diffusion term
     B = rho * cp * V / dt # Transient term
 
-    num_timesteps = int(total_time/dt)
     for t in xrange(num_timesteps):
         u0 = np.copy(u)        
         for i in xrange(1,M-1):

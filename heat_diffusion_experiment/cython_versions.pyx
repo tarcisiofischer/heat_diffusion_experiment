@@ -31,7 +31,7 @@ cpdef np.ndarray[np.float64_t, ndim=2] cython_version(
     
     # Boundary conditions --------------------------------------------------------------------------------
     u = np.zeros((M,M),dtype=np.float64) # Initial temperature
-    u0 = np.zeros((M,M),dtype=np.float64) # Initial temperature
+    u0 = np.zeros((M,M),dtype=np.float64)
     for i in range(M):
         u[M-1,i] = 25.0
     
@@ -77,7 +77,7 @@ cpdef np.ndarray[np.float64_t, ndim=2] cython_parallel_version(
      
     # Boundary conditions --------------------------------------------------------------------------------
     u = np.zeros((M,M),dtype=np.float64) # Initial temperature
-    u0[:] = u 
+    u0 = np.zeros((M,M),dtype=np.float64)
     for i in range(M):
         u[M-1,i] = 25.
      
