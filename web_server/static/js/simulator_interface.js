@@ -50,9 +50,19 @@ function show_animation(m)
 
 function run_simulation()
 {
+    // Physical properties inputs
+    var k = $("#k_input")[0].value;
+    var rho = $("#rho_input")[0].value;
+    var cp = $("#cp_input")[0].value;
+
     $.ajax({
         url: "http://127.0.0.1:5000/run_simulation",
         dataType: "json",
+        data: {
+            k: k,
+            rho: rho,
+            cp: cp,
+        },
     }).done(function(m) {
         saved_m = m;
         show_animation(m);

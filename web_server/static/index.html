@@ -5,14 +5,19 @@
         <script type="text/javascript" src="js/simulator_interface.js"></script>
     </head>
     <body>
-        <a href="javascript:run_simulation();">Run simulation</a>
-        <a href="javascript:run_again();">Run again</a>
+        K = <input id="k_input" value="385.0"><br>
+        rho = <input id="rho_input" value="8000.0"><br>
+        cp = <input id="cp_input" value="400.0">
+        <br>
+        <br>
+        <input type="Button" onclick="run_simulation();" value="Run simulation">
+        <input type="Button" onclick="run_again();" value="Run again">
         <br>
         <br>
         <canvas
             id="simulation_canvas"
-            width="500"
-            height="500"
+            width="200"
+            height="200"
             style="border: 1px solid #000">
         </canvas>
     </body>
