@@ -22,26 +22,27 @@ def run_simulation():
     import json
     from solver.heat_diffusion_2d import solve
 
-    try:
-        k = float(request.args.get('k', 385.0))
-    except:
-        k = 385.0
-    try:
-        rho = float(request.args.get('rho', 8000.0))
-    except:
-        rho = 8000.0
-    try:
-        cp = float(request.args.get('cp', 400.0))
-    except:
-        cp = 400.0
+    def get_value(key, default):
+        try:
+            return float(request.args.get(key, default))
+        except:
+            return default
 
     solve(
         n_elements=25,
         total_simulation_time=500.0,
         after_timestep_callback=save_solution,
-        k=k,
-        rho=rho,
-        cp=cp,
+
+        # Physical properties
+        k=get_value('k', 385.0),
+        rho=get_value('rho', 8000.0),
+        cp=get_value('cp', 400.0),
+
+        # Boundary conditions
+        top_temperature=get_value('top_temperature', 25.0),
+        bottom_temperature=get_value('bottom_temperature', 25.0),
+        left_temperature=get_value('left_temperature', 0.0),
+        right_temperature=get_value('right_temperature', 0.0),
     )
     return json.dumps(solutions)
 

@@ -4,11 +4,17 @@ import numpy as np
 
 def solve(
     n_elements,
-    total_simulation_time=500.0,
+    total_simulation_time,
     # Physical properties -------------------------------------------------------------------------
-    k=385.0,
-    rho=8000.0,
-    cp=400.0,
+    k,
+    rho,
+    cp,
+
+    # Boundary conditions -------------------------------------------------------------------------
+    top_temperature,
+    bottom_temperature,
+    left_temperature,
+    right_temperature,
 
     after_timestep_callback=None,
 ):
@@ -31,8 +37,10 @@ def solve(
 
     # Boundary conditions -------------------------------------------------------------------------
     u = np.zeros((n_elements, n_elements), dtype=np.float64) # Initial temperature
-    u[n_elements - 1, :] = 25 # Temperature at bottom wall
-    u[0, :] = 25 # Temperature at top wall
+    u[n_elements - 1, :] = bottom_temperature
+    u[0, :] = top_temperature
+    u[:, n_elements - 1] = left_temperature
+    u[:, 0] = right_temperature
 
     # dt condition: dt <= (0.9 * rho * cp * (l ** 2) / (4.0 * k))
     dt = (0.9 * rho * cp * (l ** 2) / (4.0 * k))

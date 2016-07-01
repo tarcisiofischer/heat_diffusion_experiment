@@ -55,13 +55,23 @@ function run_simulation()
     var rho = $("#rho_input")[0].value;
     var cp = $("#cp_input")[0].value;
 
+    // Boundary conditions inputs
+    var top_temperature = $("#u_top_input")[0].value;
+    var bottom_temperature = $("#u_bottom_input")[0].value;
+    var left_temperature = $("#u_left_input")[0].value;
+    var right_temperature = $("#u_right_input")[0].value;
+
     $.ajax({
-        url: "http://127.0.0.1:5000/run_simulation",
+        url: "/run_simulation",
         dataType: "json",
         data: {
             k: k,
             rho: rho,
             cp: cp,
+            top_temperature: top_temperature,
+            bottom_temperature: bottom_temperature,
+            left_temperature: left_temperature,
+            right_temperature: right_temperature,
         },
     }).done(function(m) {
         saved_m = m;
