@@ -5,6 +5,7 @@ import numpy as np
 def solve(
     n_elements,
     total_simulation_time,
+
     # Physical properties -------------------------------------------------------------------------
     k,
     rho,
@@ -19,10 +20,19 @@ def solve(
     after_timestep_callback=None,
 ):
     '''
-    Solve the 2d heat transfer using FEM (explicit).
-
     :param int n_elements:
         Number of elements in each axis.
+    
+    :param float total_simulation_time:
+        Total amount of simulation time in seconds
+    
+    :param float k:
+    :param float rho:
+    :param float cp:
+    :param float top_temperature:
+    :param float bottom_temperature:
+    :param float left_temperature:
+    :param float right_temperature:
 
     :param function after_timestep_callback:
         A function to be ran after each complete timestep, with signature:
