@@ -42,25 +42,80 @@ def solve(
     # Geometric properties ------------------------------------------------------------------------
     L = 1.0
     l = L / n_elements
-    A = l ** 2
-    V = l ** 3.0        
 
-    # Boundary conditions -------------------------------------------------------------------------
+    # Initial condition ---------------------------------------------------------------------------
     u = np.zeros((n_elements, n_elements), dtype=np.float64) # Initial temperature
-    u[n_elements - 1, :] = bottom_temperature
-    u[0, :] = top_temperature
-    u[:, n_elements - 1] = left_temperature
-    u[:, 0] = right_temperature
 
     # dt condition: dt <= (0.9 * rho * cp * (l ** 2) / (4.0 * k))
     dt = (0.9 * rho * cp * (l ** 2) / (4.0 * k))
     num_timesteps = int(total_simulation_time / dt)
 
-    f = k * A / l # Diffusion term
-    B = rho * cp * V / dt # Transient term
+    f = k / l # Diffusion term
+    B = rho * cp * l / dt # Transient term
 
     for t in range(num_timesteps):
-        u0 = np.copy(u)        
+        u0 = np.copy(u)
+
+        # Solve boundaries ------------------------------------------------------------------------
+        u[0, 0] = (
+            f * u0[0, 1] +
+            f / 2.0 * left_temperature +
+            f * u0[1, 0] +
+            f / 2.0 * bottom_temperature +
+            B * u0[0, 0]
+        ) / (B + 4 * f)
+        u[0, n_elements - 1] = (
+            f / 2.0 * right_temperature +
+            f * u0[0, n_elements - 2] +
+            f * u0[1, n_elements - 1] +
+            f / 2.0 * bottom_temperature +
+            B * u0[0, n_elements - 1]
+        ) / (B + 4 * f)
+        u[n_elements - 1, 0] = (
+            f * u0[n_elements - 1, 1] +
+            f / 2.0 * left_temperature +
+            f / 2.0 * top_temperature +
+            f * u0[n_elements - 2, 0] +
+            B * u0[n_elements - 1, 0]
+        ) / (B + 4 * f)
+        u[n_elements - 1, n_elements - 1] = (
+            f / 2.0 * right_temperature +
+            f * u0[n_elements - 1, n_elements - 2] +
+            f / 2.0 * top_temperature +
+            f * u0[n_elements - 2, n_elements - 1] +
+            B * u0[n_elements - 1, n_elements - 1]
+        ) / (B + 4 * f)
+        for i in range(1, n_elements - 1):
+            u[i, 0] = (
+                f * u0[i, 1] +
+                f / 2.0 * left_temperature +
+                f * u0[i + 1, 0] +
+                f * u0[i - 1, 0] +
+                B * u0[i, 0]
+            ) / (B + 4 * f)
+            u[i, n_elements - 1] = (
+                f / 2.0 * right_temperature +
+                f * u0[i, n_elements - 2] +
+                f * u0[i + 1, n_elements - 1] +
+                f * u0[i - 1, n_elements - 1] +
+                B * u0[i, n_elements - 1]
+            ) / (B + 4 * f)
+            u[0, i] = (
+                f * u0[0, i + 1] +
+                f * u0[0, i - 1] +
+                f * u0[1, i] +
+                f / 2.0 * bottom_temperature +
+                B * u0[0, i]
+            ) / (B + 4 * f)
+            u[n_elements - 1, i] = (
+                f * u0[n_elements - 1, i + 1] +
+                f * u0[n_elements - 1, i - 1] +
+                f / 2.0 * top_temperature +
+                f * u0[n_elements - 2, i] +
+                B * u0[n_elements - 1, i]
+            ) / (B + 4 * f)
+
+        # Solve middle ----------------------------------------------------------------------------
         for i in range(1, n_elements - 1):
             for j in range(1, n_elements - 1):
                 u[i, j] = (
