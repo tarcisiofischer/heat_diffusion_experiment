@@ -2,7 +2,7 @@ import numpy as np
 
 
 
-def solve(n_elements, num_timesteps=0, total_simulation_time=500.0):
+def solve(n_elements, num_timesteps=0, total_simulation_time=500.0, after_timestep_callback=None):
     '''
     Solve the 2d heat transfer using FEM (explicit).
 
@@ -11,9 +11,13 @@ def solve(n_elements, num_timesteps=0, total_simulation_time=500.0):
 
     :param int num_timesteps:
         If None, will try to calculate based on dt.
-    
+
     :param float total_simulation_time:
         The total simulation time in seconds.
+
+    :param function after_timestep_callback:
+        A function to be ran after each complete timestep, with signature:
+        function(solution_vector, current_timestep)
     '''
     # Physical properties -------------------------------------------------------------------------
     k = 385.0
@@ -28,20 +32,21 @@ def solve(n_elements, num_timesteps=0, total_simulation_time=500.0):
 
     # Boundary conditions -------------------------------------------------------------------------
     u = np.zeros((n_elements, n_elements), dtype=np.float64) # Initial temperature
-    u[n_elements - 1, :] = 25 # Temperature at top wall
+    u[n_elements - 1, :] = 25 # Temperature at bottom wall
+    u[0, :] = 25 # Temperature at top wall
 
     # dt condition: dt <= (0.9 * rho * cp * (l ** 2) / (4.0 * k))
     dt = (0.9 * rho * cp * (l ** 2) / (4.0 * k))
     if num_timesteps == 0:
         num_timesteps = int(total_simulation_time / dt)
-    
+
     f = k * A / l # Diffusion term
     B = rho * cp * V / dt # Transient term
 
-    for t in xrange(num_timesteps):
+    for t in range(num_timesteps):
         u0 = np.copy(u)        
-        for i in xrange(1, n_elements - 1):
-            for j in xrange(1, n_elements - 1):
+        for i in range(1, n_elements - 1):
+            for j in range(1, n_elements - 1):
                 u[i, j] = (
                     f * u0[i, j + 1] +
                     f * u0[i, j - 1] +
@@ -49,4 +54,7 @@ def solve(n_elements, num_timesteps=0, total_simulation_time=500.0):
                     f * u0[i - 1, j] +
                     B * u0[i, j]
                 ) / (B + 4 * f)
+        if after_timestep_callback:
+            after_timestep_callback(u, t * dt)
+
     return u

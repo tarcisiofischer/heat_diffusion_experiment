@@ -1,2 +1,0 @@
-from .cython_versions import cython_version, cython_parallel_version, show
-from heat_diffusion_experiment import heat_diffusion_2d
