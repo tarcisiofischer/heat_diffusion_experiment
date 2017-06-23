@@ -3,3 +3,5 @@ name: heat_transfer_2d
 dependencies:
     - numpy
     - flask
+    - pytest
+    - ipython-notebook
