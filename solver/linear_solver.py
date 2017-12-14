@@ -1,4 +1,3 @@
-import networkx as nx
 from copy import deepcopy
 import numpy as np
 from petsc4py import PETSc
@@ -39,11 +38,7 @@ class TimestepProperties:
         self.final_time = final_time
 
 
-def build_graph(geometric_properties, physical_properties, initial_condition, boundary_condition):
-    '''
-    Builds the problem's non-oriented graph G, where each node represents a control volume, and each
-    edge represent that two control volumes are neighbors.
-    '''
+def build_grid(geometric_properties, physical_properties, initial_condition, boundary_condition):
     # Aliases
     size_x = geometric_properties.size_x
     n_x = geometric_properties.n_x
@@ -54,7 +49,7 @@ def build_graph(geometric_properties, physical_properties, initial_condition, bo
     dx = size_x / n_x
     dy = size_y / n_y
 
-    # Constants data among the grid
+    # Data among the grid
     G = {}
     G['dx'] = dx
     G['dy'] = dy
@@ -66,10 +61,6 @@ def build_graph(geometric_properties, physical_properties, initial_condition, bo
     G['T'] = np.ones(shape=(n_x, n_y)) * initial_condition.T
 
     return G
-
-
-def build_matrix_structure(graph):
-    return None
 
 
 def solve(
@@ -107,7 +98,7 @@ def solve(
     if on_timestep_callback is None:
         on_timestep_callback = lambda *args, **kwargs: None
 
-    graph = build_graph(
+    graph = build_grid(
         geometric_properties,
         physical_properties,
         initial_condition,
@@ -166,7 +157,7 @@ def solve(
             # Left
             eqs[1:-1, :1] = \
                   A_P * x[1:-1, :1] \
-                - A_W * boundary_condition.T_W(current_time) \
+                - boundary_condition.T_W(current_time) \
                 - A_E * x[1:-1, 1:2] \
                 - A_N * x[:-2, :1] \
                 - A_S * x[2:, :1] \
@@ -175,7 +166,7 @@ def solve(
             eqs[1:-1, -1:] = \
                   A_P * x[1:-1, -1:] \
                 - A_W * x[1:-1, -2:-1] \
-                - A_E * boundary_condition.T_E(current_time) \
+                - boundary_condition.T_E(current_time) \
                 - A_N * x[:-2, -1:] \
                 - A_S * x[2:, -1:] \
                 - B_T[1:-1, -1:]
@@ -185,48 +176,48 @@ def solve(
                 - A_W * x[-1:, :-2] \
                 - A_E * x[-1:, 2:] \
                 - A_N * x[-2:-1, 1:-1] \
-                - A_S * boundary_condition.T_S(current_time) \
+                - boundary_condition.T_S(current_time) \
                 - B_T[-1:, 1:-1]
             # Top
             eqs[:1, 1:-1] = \
                   A_P * x[:1, 1:-1] \
                 - A_W * x[:1, :-2] \
                 - A_E * x[:1, 2:] \
-                - A_N * boundary_condition.T_N(current_time) \
+                - boundary_condition.T_N(current_time) \
                 - A_S * x[1:2, 1:-1] \
                 - B_T[:1, 1:-1]
 
             # Top-Left
             eqs[:1, :1] = \
                   A_P * x[:1, :1] \
-                - A_W * boundary_condition.T_W(current_time) \
+                - boundary_condition.T_W(current_time) \
                 - A_E * x[:1, 1:2] \
-                - A_N * boundary_condition.T_N(current_time) \
+                - boundary_condition.T_N(current_time) \
                 - A_S * x[1:2, :1] \
                 - B_T[:1, :1]
             # Top-Right
             eqs[:1, -1:] = \
                   A_P * x[:1, -1:] \
                 - A_W * x[:1, -2:-1] \
-                - A_E * boundary_condition.T_E(current_time) \
-                - A_N * boundary_condition.T_N(current_time) \
+                - boundary_condition.T_E(current_time) \
+                - boundary_condition.T_N(current_time) \
                 - A_S * x[1:2, -1:] \
                 - B_T[:1, -1:]
             # Bottom-Left
             eqs[-1:, :1] = \
                   A_P * x[-1:, :1] \
-                - A_W * boundary_condition.T_W(current_time) \
+                - boundary_condition.T_W(current_time) \
                 - A_E * x[-1:, 1:2] \
                 - A_N * x[-2:-1, :1] \
-                - A_S * boundary_condition.T_S(current_time) \
+                - boundary_condition.T_S(current_time) \
                 - B_T[-1:, :1]
             # Bottom-Right
             eqs[-1:, -1:] = \
                   A_P * x[-1:, -1:] \
                 - A_W * x[-1:, -2:-1] \
-                - A_E * boundary_condition.T_E(current_time) \
+                - boundary_condition.T_E(current_time) \
                 - A_N * x[-2:-1, -1:] \
-                - A_S * boundary_condition.T_S(current_time) \
+                - boundary_condition.T_S(current_time) \
                 - B_T[-1:, -1:]
 
             f[:] = eqs.reshape(n_x * n_y)
