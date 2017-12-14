@@ -79,7 +79,12 @@ def solve(
     initial_condition,
     boundary_condition,
     timestep_properties,
+
+    on_timestep_callback=None,
 ):
+    if on_timestep_callback is None:
+        on_timestep_callback = lambda *args, **kwargs: None
+
     graph = build_graph(
         geometric_properties,
         physical_properties,
@@ -89,6 +94,8 @@ def solve(
     old_graph = deepcopy(graph)
 
     current_time = 0.0
+    on_timestep_callback(current_time, graph.data['T'][:])
+
     # solution = initial_condition
     while current_time < timestep_properties.final_time:
         # Aliases
@@ -215,7 +222,8 @@ def solve(
         x.setArray(initial_guess)
         b.set(0)
         snes.solve(b, x)
-        solution = np.array(x).reshape(n_x, n_y)
+        solution = x[:].reshape(n_x, n_y)
+        solution.flags['WRITEABLE'] = False
 
         # Retrieve the solution
         old_graph = deepcopy(graph)
@@ -223,10 +231,7 @@ def solve(
 
         # Advance in time
         current_time += timestep_properties.delta_t
-        print(current_time)
 
-    import matplotlib.pyplot as plt
-    plt.imshow(graph.data['T'])
-    plt.show()
+        on_timestep_callback(current_time, solution)
 
     return graph
