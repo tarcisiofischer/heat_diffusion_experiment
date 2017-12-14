@@ -1,4 +1,7 @@
 import networkx as nx
+from copy import deepcopy
+import numpy as np
+
 
 
 class GeometricProperties:
@@ -56,15 +59,12 @@ def build_graph(geometric_properties, physical_properties, initial_condition, bo
     G.data = {}
     G.data['dx'] = dx
     G.data['dy'] = dy
+    G.data['n_x'] = n_x
+    G.data['n_y'] = n_y
     G.data['k'] = physical_properties.k
     G.data['rho'] = physical_properties.rho
     G.data['c_p'] = physical_properties.c_p
-
-    for node_id in G.nodes():
-        node = G.node[node_id]
-
-        # Problem variables
-        node['T'] = initial_condition.T
+    G.data['T'] = np.ones(shape=(n_x, n_y)) * initial_condition.T
 
     return G
 
@@ -86,42 +86,147 @@ def solve(
         initial_condition,
         boundary_condition,
     )
+    old_graph = deepcopy(graph)
 
     current_time = 0.0
     # solution = initial_condition
     while current_time < timestep_properties.final_time:
         # Aliases
+        dt = timestep_properties.delta_t
         dx = graph.data['dx']
         dy = graph.data['dy']
         k = graph.data['k']
         rho = graph.data['rho']
         c_p = graph.data['c_p']
-        dt = timestep_properties.delta_t
+        n_x = graph.data['n_x']
+        n_y = graph.data['n_y']
 
-        # Build the coeficient matrix A
+        # Build the matrix coeficients
         A_P = rho * dx * dy / dt + \
-            (2 * k * dy) / (c_p * dx) + \
-            (2 * k * dx) / (c_p * dy)
+            2 * (k * dy) / (c_p * dx) + \
+            2 * (k * dx) / (c_p * dy)
         A_E = (k * dy) / (c_p * dx)
         A_W = (k * dy) / (c_p * dx)
         A_N = (k * dx) / (c_p * dy)
         A_S = (k * dx) / (c_p * dy)
+        B_T = (rho * dx * dy * old_graph.data['T']) / dt
 
-        # Build the matrix B
-        # TODO: T_P_old must be get from each node. B_T may be inside the loop or done with
-        # numpy array (Probably the first - I wouldn't bother with numpy for now).
-        B_T = (rho * dx * dy * T_P_old) / dt
-        # for node in G:
-        #   build equation for node[i]
-        #   append equation to the matrixes
+        # Build the equation system
+        def residual_function(snes, X, f):
+            x = np.array(X).reshape((n_x, n_y))
+            eqs = np.zeros(shape=(n_x, n_y))
+            eqs[1:-1, 1:-1] = \
+                  A_P * x[1:-1, 1:-1] \
+                - A_W * x[1:-1, :-2] \
+                - A_E * x[1:-1, 2:] \
+                - A_N * x[:-2, 1:-1] \
+                - A_S * x[2:, 1:-1] \
+                - B_T[1:-1, 1:-1]
+
+            # Boundary conditions
+            # Left
+            eqs[1:-1, :1] = \
+                  A_P * x[1:-1, :1] \
+                - A_W * boundary_condition.T_W \
+                - A_E * x[1:-1, 1:2] \
+                - A_N * x[:-2, :1] \
+                - A_S * x[2:, :1] \
+                - B_T[1:-1, :1]
+            # Right
+            eqs[1:-1, -1:] = \
+                  A_P * x[1:-1, -1:] \
+                - A_W * x[1:-1, -2:-1] \
+                - A_E * boundary_condition.T_E \
+                - A_N * x[:-2, -1:] \
+                - A_S * x[2:, -1:] \
+                - B_T[1:-1, -1:]
+            # Bottom
+            eqs[-1:, 1:-1] = \
+                  A_P * x[-1:, 1:-1] \
+                - A_W * x[-1:, :-2] \
+                - A_E * x[-1:, 2:] \
+                - A_N * x[-2:-1, 1:-1] \
+                - A_S * boundary_condition.T_S \
+                - B_T[-1:, 1:-1]
+            # Top
+            eqs[:1, 1:-1] = \
+                  A_P * x[:1, 1:-1] \
+                - A_W * x[:1, :-2] \
+                - A_E * x[:1, 2:] \
+                - A_N * boundary_condition.T_N \
+                - A_S * x[1:2, 1:-1] \
+                - B_T[:1, 1:-1]
+
+            # Top-Left
+            eqs[:1, :1] = \
+                  A_P * x[:1, :1] \
+                - A_W * boundary_condition.T_W \
+                - A_E * x[:1, 1:2] \
+                - A_N * boundary_condition.T_N \
+                - A_S * x[1:2, :1] \
+                - B_T[:1, :1]
+            # Top-Right
+            eqs[:1, -1:] = \
+                  A_P * x[:1, -1:] \
+                - A_W * x[:1, -2:-1] \
+                - A_E * boundary_condition.T_E \
+                - A_N * boundary_condition.T_N \
+                - A_S * x[1:2, -1:] \
+                - B_T[:1, -1:]
+            # Bottom-Left
+            eqs[-1:, :1] = \
+                  A_P * x[-1:, :1] \
+                - A_W * boundary_condition.T_W \
+                - A_E * x[-1:, 1:2] \
+                - A_N * x[-2:-1, :1] \
+                - A_S * boundary_condition.T_S \
+                - B_T[-1:, :1]
+            # Bottom-Right
+            eqs[-1:, -1:] = \
+                  A_P * x[-1:, -1:] \
+                - A_W * x[-1:, -2:-1] \
+                - A_E * boundary_condition.T_E \
+                - A_N * x[-2:-1, -1:] \
+                - A_S * boundary_condition.T_S \
+                - B_T[-1:, -1:]
+
+            f[:] = eqs.reshape(n_x * n_y)
 
         # Solve Ax = B
-        # solve linear system
+        from petsc4py import PETSc
+        snes = PETSc.SNES().create()
+        r = PETSc.Vec().createSeq(n_x * n_y)  # residual vector
+        x = PETSc.Vec().createSeq(n_x * n_y)  # solution vector
+        b = PETSc.Vec().createSeq(n_x * n_y)  # right-hand side
+        snes.setFunction(residual_function, r)
+
+#         dmda = PETSc.DMDA().create([n_x * n_y], dof=1, stencil_width=n_x*n_y, stencil_type='star')
+#         snes.setDM(dmda)
+
+        from scipy.sparse.csr import csr_matrix
+        dm = PETSc.DMShell().create()
+        j_structure = csr_matrix(np.ones(shape=(n_x*n_y, n_x*n_y)))
+        csr = (j_structure.indptr, j_structure.indices, j_structure.data)
+        jac = PETSc.Mat().createAIJWithArrays(j_structure.shape, csr)
+        dm.setMatrix(jac)
+        snes.setDM(dm)
+
+        initial_guess = np.array(old_graph.data['T'])
+        x.setArray(initial_guess)
+        b.set(0)
+        snes.solve(b, x)
+        solution = np.array(x).reshape(n_x, n_y)
 
         # Retrieve the solution
-        # update graph
+        old_graph = deepcopy(graph)
+        graph.data['T'][:] = solution
 
         # Advance in time
         current_time += timestep_properties.delta_t
+        print(current_time)
+
+    import matplotlib.pyplot as plt
+    plt.imshow(graph.data['T'])
+    plt.show()
 
     return graph
