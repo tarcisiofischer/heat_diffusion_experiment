@@ -1,6 +1,7 @@
 import numpy as np
 from solver.linear_solver import solve, GeometricProperties, PhysicalProperties, \
     ConstantInitialCondition, TimestepProperties, GhostNodeBoundaryCondition
+from time import time
 
 
 def plot_animated_results(result_list):
@@ -14,10 +15,10 @@ def plot_animated_results(result_list):
 
     f = plt.figure()
     img = plt.imshow(result_list[0], vmin=np.min(result_list), vmax=np.max(result_list))
-    
+
     def animate(i):
         img.set_data(result_list[i])
-    
+
     anim = animation.FuncAnimation(
         f,
         animate,
@@ -29,17 +30,26 @@ def plot_animated_results(result_list):
     plt.show()
 
 
+class InMemoryResultsHandler():
+
+    def __init__(self):
+        self._s = time()
+        self.result_list = []
+
+    def __call__(self, time_, result):
+        print("Saving time %2.5f..." % (time_,), end='')
+        self.result_list.append(np.array(result))
+        print(" Done. (%s)" % (time() - self._s,))
+        self._s = time()
+
+
 def test_solver():
-    result_list = []
-    def save_results_in_memory(time, result):
-        print("Saving time %2.5f..." % (time,), end='')
-        result_list.append(np.array(result))
-        print(" Done.")
+    result_handler = InMemoryResultsHandler()
 
     solve(
         GeometricProperties(
-            n_x=20,
-            n_y=20,
+            n_x=100,
+            n_y=100,
             size_x=1.0,
             size_y=1.0,
         ),
@@ -52,16 +62,16 @@ def test_solver():
             T=0.0,
         ),
         GhostNodeBoundaryCondition(
-            T_E=3.0,
-            T_W=3.0,
-            T_N=3.0,
-            T_S=3.0,
+            T_E=lambda t: np.cos(t * 10.),
+            T_W=lambda t: np.sin(t * 10.),
+            T_N=lambda t: 0.0,
+            T_S=lambda t: 0.0,
         ),
         TimestepProperties(
-            delta_t=0.001,
-            final_time=0.1,
+            delta_t=0.01,
+            final_time=5.0,
         ),
-        on_timestep_callback=save_results_in_memory
+        on_timestep_callback=result_handler
     )
 
-    plot_animated_results(result_list)
+    plot_animated_results(result_handler.result_list)
