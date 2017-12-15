@@ -31,6 +31,21 @@ class PrescribedTemperatureBoundaryCondition:
         self.T = T
 
 
+    def type(self):
+        from solver.residual_function import BC_TYPE_PRESCRIBED_PHI
+        return BC_TYPE_PRESCRIBED_PHI
+
+
+class PrescribedFlowBoundaryCondition:
+    def __init__(self, flow):
+        self.prescribed_flow = flow
+
+
+    def type(self):
+        from solver.residual_function import BC_TYPE_PRESCRIBED_FLOW
+        return BC_TYPE_PRESCRIBED_FLOW
+
+
 class TimestepProperties:
     def __init__(self, delta_t, final_time):
         self.delta_t = delta_t

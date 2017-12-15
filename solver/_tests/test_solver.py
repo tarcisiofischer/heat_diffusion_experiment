@@ -2,7 +2,7 @@ import numpy as np
 from time import time
 from solver.properties import GeometricProperties, PhysicalProperties,\
     ConstantInitialCondition, TimestepProperties, PrescribedTemperatureBoundaryCondition,\
-    TemperatureBoundaryConditions
+    TemperatureBoundaryConditions, PrescribedFlowBoundaryCondition
 from solver.nonlinear_solver import solve
 
 
@@ -50,13 +50,13 @@ def test_solver():
 
     solve(
         GeometricProperties(
-            n_x=100,
-            n_y=100,
+            n_x=50,
+            n_y=50,
             size_x=1.0,
-            size_y=1.0,
+            size_y=0.1,
         ),
         PhysicalProperties(
-            k=1.0,
+            k=10.0,
             rho=1.0,
             c_p=1.0,
         ),
@@ -64,16 +64,18 @@ def test_solver():
             T=0.0,
         ),
         TemperatureBoundaryConditions(
-            PrescribedTemperatureBoundaryCondition(lambda t: np.sin(t * 10.)),
-            PrescribedTemperatureBoundaryCondition(lambda t: np.cos(t * 10.)),
-            PrescribedTemperatureBoundaryCondition(lambda t: np.sin(t * 2.)),
-            PrescribedTemperatureBoundaryCondition(lambda t: np.cos(t * 20.)),
+            PrescribedTemperatureBoundaryCondition(lambda t: 0.0),
+            PrescribedTemperatureBoundaryCondition(lambda t: 1.0),
+            PrescribedFlowBoundaryCondition(lambda t: 0.0),
+            PrescribedFlowBoundaryCondition(lambda t: 0.0),
         ),
         TimestepProperties(
             delta_t=0.01,
             final_time=2.0,
         ),
-        on_timestep_callback=result_handler
+        on_timestep_callback=result_handler,
+        
+        use_multigrid=False
     )
 
     plot_animated_results(result_handler.result_list)
