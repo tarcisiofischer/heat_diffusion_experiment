@@ -63,6 +63,26 @@ def build_grid(geometric_properties, physical_properties, initial_condition, bou
     return G
 
 
+def transient_term(rho, T_P, T_Po, dx, dy, dt):
+    # Accumulative term
+    return (rho * T_P - rho * T_Po) * dx * dy / dt
+
+
+def diffusive_term(k, c_p, T_E, T_P, T_W, T_N, T_S, dx, dy):
+    result = 0
+    
+    # Left side diffusive flux term
+    result += +(k / c_p * (T_E - T_P) / dx) * dy
+    # Right side diffusive flux term
+    result += -(k / c_p * (T_P - T_W) / dx) * dy
+    # Top side diffusive flux term
+    result += +(k / c_p * (T_N - T_P) / dy) * dx
+    # Bottom side diffusive flux term
+    result += -(k / c_p * (T_P - T_S) / dy) * dx
+    
+    return result
+
+
 def solve(
     geometric_properties,
     physical_properties,
@@ -139,19 +159,16 @@ def solve(
     # solution = initial_condition
     while current_time < timestep_properties.final_time:
         # Aliases
-        B_T = (rho * dx * dy * old_graph['T']) / dt
+        T_old = old_graph['T']
+        B_T = (rho * dx * dy * T_old) / dt
 
         # Build the equation system
         def residual_function(snes, X, f):
             x = X.getArray(readonly=True).reshape((n_x, n_y))
             eqs = np.zeros(shape=(n_x, n_y))
             eqs[1:-1, 1:-1] = \
-                  A_P * x[1:-1, 1:-1] \
-                - A_W * x[1:-1, :-2] \
-                - A_E * x[1:-1, 2:] \
-                - A_N * x[:-2, 1:-1] \
-                - A_S * x[2:, 1:-1] \
-                - B_T[1:-1, 1:-1]
+                  transient_term(rho, x[1:-1, 1:-1], T_old[1:-1, 1:-1], dx, dy, dt) \
+                - diffusive_term(k, c_p, x[1:-1, 2:], x[1:-1, 1:-1], x[1:-1, :-2], x[:-2, 1:-1], x[2:, 1:-1], dx, dy)
 
             # Boundary conditions
             # Left
