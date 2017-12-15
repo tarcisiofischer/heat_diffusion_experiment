@@ -129,15 +129,6 @@ def solve(
     rho = graph['rho']
     c_p = graph['c_p']
 
-    # Build the matrix coeficients
-    A_P = rho * dx * dy / dt + \
-        2 * (k * dy) / (c_p * dx) + \
-        2 * (k * dx) / (c_p * dy)
-    A_E = (k * dy) / (c_p * dx)
-    A_W = (k * dy) / (c_p * dx)
-    A_N = (k * dx) / (c_p * dy)
-    A_S = (k * dx) / (c_p * dy)
-
     snes = PETSc.SNES().create()
     snes.setFromOptions()
 
@@ -148,121 +139,29 @@ def solve(
     # solution = initial_condition
     while current_time < timestep_properties.final_time:
         # Aliases
-        T_old = old_graph['T']
+        x_old = old_graph['T']
 
         # Build the equation system
         def residual_function(snes, X, f):
             x = X.getArray(readonly=True).reshape((n_x, n_y))
             eqs = np.zeros(shape=(n_x, n_y))
 
-            eqs += transient_term(rho, x[:, :], T_old[:, :], dx, dy, dt)
+            # Transient (Accumulative) term
+            eqs += transient_term(rho, x[:, :], x_old[:, :], dx, dy, dt)
 
-            # Right side diffusive flux term
+            # Diffusive term
+            # East flux
             eqs[:, :-1] += -diffusive_flux_term(k, c_p, x[:, 1:], x[:, :-1], dx, dy)
             eqs[:, -1:] += -diffusive_flux_term(k, c_p, boundary_condition.T_E(current_time), x[:, -1:], dx / 2.0, dy)
-
-            # Left side diffusive flux term
+            # West flux
             eqs[:, 1:] += +diffusive_flux_term(k, c_p, x[:, 1:], x[:, :-1], dx, dy)
             eqs[:, :1] += +diffusive_flux_term(k, c_p, x[:, :1], boundary_condition.T_W(current_time), dx / 2.0, dy)
-
-            T_P = x[1:-1, 1:-1]
-            T_N = x[:-2, 1:-1]
-            T_S = x[2:, 1:-1]
-            eqs[1:-1, 1:-1] += (
-                - (
-                    + diffusive_flux_term(k, c_p, T_N, T_P, dy, dx)
-                    - diffusive_flux_term(k, c_p, T_P, T_S, dy, dx)
-                )
-            )
-
-            # Boundary conditions
-            # Left
-            T_P = x[1:-1, :1]
-            T_N = x[:-2, :1]
-            T_S = x[2:, :1]
-            eqs[1:-1, :1] += (
-                - (
-                    + diffusive_flux_term(k, c_p, T_N, T_P, dy, dx)
-                    - diffusive_flux_term(k, c_p, T_P, T_S, dy, dx)
-                )
-            )
-            # Right
-            T_P = x[1:-1, -1:]
-            T_N = x[:-2, -1:]
-            T_S = x[2:, -1:]
-            eqs[1:-1, -1:] += (
-                - (
-                    + diffusive_flux_term(k, c_p, T_N, T_P, dy, dx)
-                    - diffusive_flux_term(k, c_p, T_P, T_S, dy, dx)
-                )
-            )
-            # Bottom
-            T_P = x[-1:, 1:-1]
-            T_N = x[-2:-1, 1:-1]
-            T_S = boundary_condition.T_S(current_time)
-            eqs[-1:, 1:-1] += (
-                - (
-                    + diffusive_flux_term(k, c_p, T_N, T_P, dy, dx)
-                    # Boundary condition
-                    - diffusive_flux_term(k, c_p, T_P, T_S, dy / 2.0, dx)
-                )
-            )
-            # Top
-            T_P = x[:1, 1:-1]
-            T_N = boundary_condition.T_N(current_time)
-            T_S = x[1:2, 1:-1]
-            eqs[:1, 1:-1] += (
-                - (
-                    # Boundary condition
-                    + diffusive_flux_term(k, c_p, T_N, T_P, dy / 2.0, dx)
-                    - diffusive_flux_term(k, c_p, T_P, T_S, dy, dx)
-                )
-            )
-
-            # Top-Left
-            T_P = x[:1, :1]
-            T_N = boundary_condition.T_N(current_time)
-            T_S = x[1:2, :1]
-            eqs[:1, :1] += (
-                - (
-                    # Boundary condition
-                    + diffusive_flux_term(k, c_p, T_N, T_P, dy / 2.0, dx)
-                    - diffusive_flux_term(k, c_p, T_P, T_S, dy, dx)
-                )
-            )
-            # Top-Right
-            T_P = x[:1, -1:]
-            T_N = boundary_condition.T_N(current_time)
-            T_S = x[1:2, -1:]
-            eqs[:1, -1:] += (
-                - (
-                    # Boundary condition
-                    + diffusive_flux_term(k, c_p, T_N, T_P, dy / 2.0, dx)
-                    - diffusive_flux_term(k, c_p, T_P, T_S, dy, dx)
-                )
-            )
-            # Bottom-Left
-            T_P = x[-1:, :1]
-            T_N = x[-2:-1, :1]
-            T_S = boundary_condition.T_S(current_time)
-            eqs[-1:, :1] += (
-                - (
-                    + diffusive_flux_term(k, c_p, T_N, T_P, dy, dx)
-                    # Boundary condition
-                    - diffusive_flux_term(k, c_p, T_P, T_S, dy / 2.0, dx)
-                )
-            )
-            # Bottom-Right
-            T_P = x[-1:, -1:]
-            T_N = x[-2:-1, -1:]
-            T_S = boundary_condition.T_S(current_time)
-            eqs[-1:, -1:] += (
-                - (
-                    + diffusive_flux_term(k, c_p, T_N, T_P, dy, dx)
-                    # Boundary condition
-                    - diffusive_flux_term(k, c_p, T_P, T_S, dy / 2.0, dx)
-                )
-            )
+            # South flux
+            eqs[:-1, :] += -diffusive_flux_term(k, c_p, x[1:, :], x[:-1, :], dx, dy)
+            eqs[-1:, :] += -diffusive_flux_term(k, c_p, boundary_condition.T_S(current_time), x[-1:, :], dx / 2.0, dy)
+            # North flux
+            eqs[1:, :] += +diffusive_flux_term(k, c_p, x[1:, :], x[:-1, :], dx, dy)
+            eqs[:1, :] += +diffusive_flux_term(k, c_p, x[:1, :], boundary_condition.T_N(current_time), dx / 2.0, dy)
 
             f[:] = eqs.reshape(n_x * n_y)
 
