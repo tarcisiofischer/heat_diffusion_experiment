@@ -18,12 +18,17 @@ class ConstantInitialCondition:
         self.T = T
 
 
+class TemperatureBoundaryConditions:
+    def __init__(self, east_bc, west_bc, north_bc, south_bc):
+        self.east_bc = east_bc
+        self.west_bc = west_bc
+        self.north_bc = north_bc
+        self.south_bc = south_bc
+
+
 class PrescribedTemperatureBoundaryCondition:
-    def __init__(self, T_E, T_W, T_N, T_S):
-        self.T_E = T_E
-        self.T_W = T_W
-        self.T_N = T_N
-        self.T_S = T_S
+    def __init__(self, T):
+        self.T = T
 
 
 class TimestepProperties:

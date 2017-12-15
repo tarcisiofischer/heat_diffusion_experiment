@@ -11,7 +11,16 @@ def diffusive_flux_term(k, c_p, T_0, T_1, d0, d1):
     return (k / c_p * (T_0 - T_1) / d0) * d1
 
 
-def residual_function(snes, X, f, t, grid, old_grid, timestep_properties, boundary_condition):
+def residual_function(
+    snes,
+    X,
+    f,
+    t,
+    grid,
+    old_grid,
+    timestep_properties,
+    boundary_conditions
+):
     n_x = grid['n_x']
     n_y = grid['n_y']
     dt = timestep_properties.delta_t
@@ -31,15 +40,15 @@ def residual_function(snes, X, f, t, grid, old_grid, timestep_properties, bounda
     # Diffusive term
     # East flux
     eqs[:, :-1] += -diffusive_flux_term(k, c_p, x[:, 1:], x[:, :-1], dx, dy)
-    eqs[:, -1:] += -diffusive_flux_term(k, c_p, boundary_condition.T_E(t), x[:, -1:], dx / 2.0, dy)
+    eqs[:, -1:] += -diffusive_flux_term(k, c_p, boundary_conditions.east_bc.T(t), x[:, -1:], dx / 2.0, dy)
     # West flux
     eqs[:, 1:] += +diffusive_flux_term(k, c_p, x[:, 1:], x[:, :-1], dx, dy)
-    eqs[:, :1] += +diffusive_flux_term(k, c_p, x[:, :1], boundary_condition.T_W(t), dx / 2.0, dy)
+    eqs[:, :1] += +diffusive_flux_term(k, c_p, x[:, :1], boundary_conditions.west_bc.T(t), dx / 2.0, dy)
     # South flux
     eqs[:-1, :] += -diffusive_flux_term(k, c_p, x[1:, :], x[:-1, :], dx, dy)
-    eqs[-1:, :] += -diffusive_flux_term(k, c_p, boundary_condition.T_S(t), x[-1:, :], dx / 2.0, dy)
+    eqs[-1:, :] += -diffusive_flux_term(k, c_p, boundary_conditions.south_bc.T(t), x[-1:, :], dx / 2.0, dy)
     # North flux
     eqs[1:, :] += +diffusive_flux_term(k, c_p, x[1:, :], x[:-1, :], dx, dy)
-    eqs[:1, :] += +diffusive_flux_term(k, c_p, x[:1, :], boundary_condition.T_N(t), dx / 2.0, dy)
+    eqs[:1, :] += +diffusive_flux_term(k, c_p, x[:1, :], boundary_conditions.north_bc.T(t), dx / 2.0, dy)
 
     f[:] = eqs.reshape(n_x * n_y)

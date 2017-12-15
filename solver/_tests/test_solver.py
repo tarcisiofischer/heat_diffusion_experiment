@@ -1,7 +1,8 @@
 import numpy as np
 from time import time
 from solver.properties import GeometricProperties, PhysicalProperties,\
-    ConstantInitialCondition, TimestepProperties, PrescribedTemperatureBoundaryCondition
+    ConstantInitialCondition, TimestepProperties, PrescribedTemperatureBoundaryCondition,\
+    TemperatureBoundaryConditions
 from solver.nonlinear_solver import solve
 
 
@@ -62,11 +63,11 @@ def test_solver():
         ConstantInitialCondition(
             T=0.0,
         ),
-        PrescribedTemperatureBoundaryCondition(
-            T_E=lambda t: np.cos(t * 10.),
-            T_W=lambda t: np.sin(t * 10.),
-            T_N=lambda t: np.cos(t * 2.),
-            T_S=lambda t: np.sin(t * 20.),
+        TemperatureBoundaryConditions(
+            PrescribedTemperatureBoundaryCondition(lambda t: np.sin(t * 10.)),
+            PrescribedTemperatureBoundaryCondition(lambda t: np.cos(t * 10.)),
+            PrescribedTemperatureBoundaryCondition(lambda t: np.sin(t * 2.)),
+            PrescribedTemperatureBoundaryCondition(lambda t: np.cos(t * 20.)),
         ),
         TimestepProperties(
             delta_t=0.01,
