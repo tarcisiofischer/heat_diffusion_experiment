@@ -18,7 +18,7 @@ class ConstantInitialCondition:
         self.T = T
 
 
-class GhostNodeBoundaryCondition:
+class PrescribedTemperatureBoundaryCondition:
     def __init__(self, T_E, T_W, T_N, T_S):
         self.T_E = T_E
         self.T_W = T_W

@@ -1,7 +1,7 @@
 import numpy as np
 from time import time
 from solver.properties import GeometricProperties, PhysicalProperties,\
-    ConstantInitialCondition, GhostNodeBoundaryCondition, TimestepProperties
+    ConstantInitialCondition, TimestepProperties, PrescribedTemperatureBoundaryCondition
 from solver.nonlinear_solver import solve
 
 
@@ -62,7 +62,7 @@ def test_solver():
         ConstantInitialCondition(
             T=0.0,
         ),
-        GhostNodeBoundaryCondition(
+        PrescribedTemperatureBoundaryCondition(
             T_E=lambda t: np.cos(t * 10.),
             T_W=lambda t: np.sin(t * 10.),
             T_N=lambda t: np.cos(t * 2.),
