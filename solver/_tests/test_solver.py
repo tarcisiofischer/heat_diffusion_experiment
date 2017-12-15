@@ -1,7 +1,8 @@
 import numpy as np
-from solver.linear_solver import solve, GeometricProperties, PhysicalProperties, \
-    ConstantInitialCondition, TimestepProperties, GhostNodeBoundaryCondition
 from time import time
+from solver.properties import GeometricProperties, PhysicalProperties,\
+    ConstantInitialCondition, GhostNodeBoundaryCondition, TimestepProperties
+from solver.nonlinear_solver import solve
 
 
 def plot_animated_results(result_list):
@@ -64,12 +65,12 @@ def test_solver():
         GhostNodeBoundaryCondition(
             T_E=lambda t: np.cos(t * 10.),
             T_W=lambda t: np.sin(t * 10.),
-            T_N=lambda t: 0.0,
-            T_S=lambda t: 0.0,
+            T_N=lambda t: np.cos(t * 2.),
+            T_S=lambda t: np.sin(t * 20.),
         ),
         TimestepProperties(
             delta_t=0.01,
-            final_time=5.0,
+            final_time=2.0,
         ),
         on_timestep_callback=result_handler
     )
