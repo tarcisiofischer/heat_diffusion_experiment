@@ -68,18 +68,22 @@ def transient_term(rho, T_P, T_Po, dx, dy, dt):
     return (rho * T_P - rho * T_Po) * dx * dy / dt
 
 
+def diffusive_flux_term(k, c_p, T_0, T_1, d0, d1):
+    return (k / c_p * (T_0 - T_1) / d0) * d1
+
+
 def diffusive_term(k, c_p, T_E, T_P, T_W, T_N, T_S, dx, dy):
     result = 0
-    
+
     # Left side diffusive flux term
-    result += +(k / c_p * (T_E - T_P) / dx) * dy
+    result += +diffusive_flux_term(k, c_p, T_E, T_P, dx, dy)
     # Right side diffusive flux term
-    result += -(k / c_p * (T_P - T_W) / dx) * dy
+    result += -diffusive_flux_term(k, c_p, T_P, T_W, dx, dy)
     # Top side diffusive flux term
-    result += +(k / c_p * (T_N - T_P) / dy) * dx
+    result += +diffusive_flux_term(k, c_p, T_N, T_P, dy, dx)
     # Bottom side diffusive flux term
-    result += -(k / c_p * (T_P - T_S) / dy) * dx
-    
+    result += -diffusive_flux_term(k, c_p, T_P, T_S, dy, dx)
+
     return result
 
 
