@@ -72,6 +72,63 @@ def diffusive_flux_term(k, c_p, T_0, T_1, d0, d1):
     return (k / c_p * (T_0 - T_1) / d0) * d1
 
 
+def residual_function(snes, X, f, t, graph, old_graph, timestep_properties, boundary_condition):
+    n_x = graph['n_x']
+    n_y = graph['n_y']
+    dt = timestep_properties.delta_t
+    dx = graph['dx']
+    dy = graph['dy']
+    k = graph['k']
+    rho = graph['rho']
+    c_p = graph['c_p']
+    x_old = old_graph['T']
+
+    x = X.getArray(readonly=True).reshape((n_x, n_y))
+    eqs = np.zeros(shape=(n_x, n_y))
+
+    # Transient (Accumulative) term
+    eqs += transient_term(rho, x[:, :], x_old[:, :], dx, dy, dt)
+
+    # Diffusive term
+    # East flux
+    eqs[:, :-1] += -diffusive_flux_term(k, c_p, x[:, 1:], x[:, :-1], dx, dy)
+    eqs[:, -1:] += -diffusive_flux_term(k, c_p, boundary_condition.T_E(t), x[:, -1:], dx / 2.0, dy)
+    # West flux
+    eqs[:, 1:] += +diffusive_flux_term(k, c_p, x[:, 1:], x[:, :-1], dx, dy)
+    eqs[:, :1] += +diffusive_flux_term(k, c_p, x[:, :1], boundary_condition.T_W(t), dx / 2.0, dy)
+    # South flux
+    eqs[:-1, :] += -diffusive_flux_term(k, c_p, x[1:, :], x[:-1, :], dx, dy)
+    eqs[-1:, :] += -diffusive_flux_term(k, c_p, boundary_condition.T_S(t), x[-1:, :], dx / 2.0, dy)
+    # North flux
+    eqs[1:, :] += +diffusive_flux_term(k, c_p, x[1:, :], x[:-1, :], dx, dy)
+    eqs[:1, :] += +diffusive_flux_term(k, c_p, x[:1, :], boundary_condition.T_N(t), dx / 2.0, dy)
+
+    f[:] = eqs.reshape(n_x * n_y)
+
+
+def create_solver(use_multigrid, use_newton, n_x, n_y):
+    snes = PETSc.SNES().create()
+
+    options = PETSc.Options()
+    options.clear()
+    if use_multigrid:
+        options.setValue('pc_type', 'gamg')
+        options.setValue('pc_gamg_reuse_interpolation', 'True')
+    else:
+        options.setValue('pc_type', 'ilu')
+    options.setValue('ksp_type', 'gmres')
+    if use_newton:
+        options.setValue('snes_type', 'newtonls')
+    else:
+        options.setValue('snes_type', 'ksponly')
+    options.setValue('ksp_atol', 1e-7)
+    snes.setFromOptions()
+
+    dmda = PETSc.DMDA().create([n_x, n_y], dof=1, stencil_width=1, stencil_type='star')
+    snes.setDM(dmda)
+    return snes
+
+
 def solve(
     geometric_properties,
     physical_properties,
@@ -86,24 +143,6 @@ def solve(
     use_multigrid=True,
     use_newton=False,
 ):
-    options = PETSc.Options()
-    options.clear()
-
-    if use_multigrid:
-        options.setValue('pc_type', 'gamg')
-        options.setValue('pc_gamg_reuse_interpolation', 'True')
-    else:
-        options.setValue('pc_type', 'ilu')
-
-    options.setValue('ksp_type', 'gmres')
-
-    if use_newton:
-        options.setValue('snes_type', 'newtonls')
-    else:
-        options.setValue('snes_type', 'ksponly')
-
-    options.setValue('ksp_atol', 1e-7)
-
     if on_timestep_callback is None:
         on_timestep_callback = lambda *args, **kwargs: None
 
@@ -113,63 +152,21 @@ def solve(
         initial_condition,
         boundary_condition,
     )
-    old_graph = deepcopy(graph)
 
-    current_time = 0.0
-    on_timestep_callback(current_time, graph['T'][:])
-
-    n_x = graph['n_x']
-    n_y = graph['n_y']
-    dmda = PETSc.DMDA().create([n_x, n_y], dof=1, stencil_width=1, stencil_type='star')
-
-    dt = timestep_properties.delta_t
-    dx = graph['dx']
-    dy = graph['dy']
-    k = graph['k']
-    rho = graph['rho']
-    c_p = graph['c_p']
-
-    snes = PETSc.SNES().create()
-    snes.setFromOptions()
-
+    n_x = geometric_properties.n_x
+    n_y = geometric_properties.n_y
+    snes = create_solver(use_multigrid, use_newton, n_x, n_y)
     r = PETSc.Vec().createSeq(n_x * n_y)  # residual vector
     x = PETSc.Vec().createSeq(n_x * n_y)  # solution vector
     b = PETSc.Vec().createSeq(n_x * n_y)  # right-hand side
 
+    current_time = 0.0
+    old_graph = deepcopy(graph)
+    on_timestep_callback(current_time, graph['T'][:])
+
     # solution = initial_condition
     while current_time < timestep_properties.final_time:
-        # Aliases
-        x_old = old_graph['T']
-
-        # Build the equation system
-        def residual_function(snes, X, f):
-            x = X.getArray(readonly=True).reshape((n_x, n_y))
-            eqs = np.zeros(shape=(n_x, n_y))
-
-            # Transient (Accumulative) term
-            eqs += transient_term(rho, x[:, :], x_old[:, :], dx, dy, dt)
-
-            # Diffusive term
-            # East flux
-            eqs[:, :-1] += -diffusive_flux_term(k, c_p, x[:, 1:], x[:, :-1], dx, dy)
-            eqs[:, -1:] += -diffusive_flux_term(k, c_p, boundary_condition.T_E(current_time), x[:, -1:], dx / 2.0, dy)
-            # West flux
-            eqs[:, 1:] += +diffusive_flux_term(k, c_p, x[:, 1:], x[:, :-1], dx, dy)
-            eqs[:, :1] += +diffusive_flux_term(k, c_p, x[:, :1], boundary_condition.T_W(current_time), dx / 2.0, dy)
-            # South flux
-            eqs[:-1, :] += -diffusive_flux_term(k, c_p, x[1:, :], x[:-1, :], dx, dy)
-            eqs[-1:, :] += -diffusive_flux_term(k, c_p, boundary_condition.T_S(current_time), x[-1:, :], dx / 2.0, dy)
-            # North flux
-            eqs[1:, :] += +diffusive_flux_term(k, c_p, x[1:, :], x[:-1, :], dx, dy)
-            eqs[:1, :] += +diffusive_flux_term(k, c_p, x[:1, :], boundary_condition.T_N(current_time), dx / 2.0, dy)
-
-            f[:] = eqs.reshape(n_x * n_y)
-
-        # Solve Ax = B
-        snes.setFunction(residual_function, r)
-
-        snes.setDM(dmda)
-
+        snes.setFunction(residual_function, r, [current_time, graph, old_graph, timestep_properties, boundary_condition])
         initial_guess = np.array(old_graph['T'])
         x.setArray(initial_guess)
         b.set(0)
