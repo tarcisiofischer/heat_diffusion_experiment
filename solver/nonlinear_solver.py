@@ -40,7 +40,7 @@ def solve(
 
     # Solver options
     use_multigrid=True,
-    use_newton=False,
+    use_newton=True,
 ):
     if on_timestep_callback is None:
         on_timestep_callback = lambda *args, **kwargs: None
@@ -61,7 +61,7 @@ def solve(
 
     current_time = 0.0
     old_grid = deepcopy(grid)
-    on_timestep_callback(current_time, grid['T'][:])
+    on_timestep_callback(current_time, grid['T'])
 
     # solution = initial_condition
     while current_time < timestep_properties.final_time:
@@ -70,7 +70,7 @@ def solve(
         x.setArray(initial_guess)
         b.set(0)
         snes.solve(b, x)
-        solution = x[:].reshape(n_x, n_y)
+        solution = x[:].reshape(n_y, n_x)
         solution.flags['WRITEABLE'] = False
 
         # Retrieve the solution

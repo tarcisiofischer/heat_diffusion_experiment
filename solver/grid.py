@@ -22,6 +22,6 @@ def build_grid(geometric_properties, physical_properties, initial_condition, bou
     G['k'] = physical_properties.k
     G['rho'] = physical_properties.rho
     G['c_p'] = physical_properties.c_p
-    G['T'] = np.ones(shape=(n_x, n_y)) * initial_condition.T
+    G['T'] = initial_condition.T
 
     return G

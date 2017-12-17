@@ -18,7 +18,7 @@ def add_transient_term(eqs, rho, x, x_old, dx, dy, dt):
     eqs += accumulation_term(rho, x, x_old, dx, dy, dt)
 
 
-def add_diffusive_term(eqs, boundary_conditions, n_x, n_y, k, c_p, x, dx, dy, t):
+def add_diffusive_term(eqs, boundary_conditions, k, c_p, x, dx, dy, t):
     # East flux
     eqs[:, :-1] += -diffusive_flux_term(k, c_p, x[:, 1:], x[:, :-1], dx, dy)
     bc = boundary_conditions.east_bc
@@ -77,10 +77,10 @@ def residual_function(
     c_p = grid['c_p']
     x_old = old_grid['T']
 
-    x = X.getArray(readonly=True).reshape((n_x, n_y))
-    eqs = np.zeros(shape=(n_x, n_y))
+    x = X.getArray(readonly=True).reshape((n_y, n_x))
+    eqs = np.zeros(shape=(n_y, n_x))
 
     add_transient_term(eqs, rho, x, x_old, dx, dy, dt)
-    add_diffusive_term(eqs, boundary_conditions, n_x, n_y, k, c_p, x, dx, dy, t)
+    add_diffusive_term(eqs, boundary_conditions, k, c_p, x, dx, dy, t)
 
     f[:] = eqs.reshape(n_x * n_y)

@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class GeometricProperties:
     def __init__(self, n_x, n_y, size_x, size_y):
         self.n_x = n_x
@@ -14,8 +17,13 @@ class PhysicalProperties:
 
 
 class ConstantInitialCondition:
-    def __init__(self, T):
-        self.T = T
+    def __init__(self, T, n_x, n_y):
+        self.T = np.ones(shape=(n_y, n_x)) * T
+
+
+class FromFileInitialCondition:
+    def __init__(self, filename):
+        self.T = np.loadtxt(filename)
 
 
 class TemperatureBoundaryConditions:
