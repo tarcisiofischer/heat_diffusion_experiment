@@ -1,8 +1,8 @@
 import numpy as np
 from time import time
 from solver.properties import GeometricProperties, PhysicalProperties,\
-    ConstantInitialCondition, TimestepProperties, PrescribedTemperatureBoundaryCondition,\
-    TemperatureBoundaryConditions, PrescribedFlowBoundaryCondition, FromFileInitialCondition
+    TimestepProperties, TemperatureBoundaryConditions, PrescribedFlowBoundaryCondition, \
+    ConstantMapInitialCondition
 from solver.nonlinear_solver import solve
 
 
@@ -49,36 +49,39 @@ class InMemoryResultsHandler():
 
 def test_solver():
     result_handler = InMemoryResultsHandler()
-    n_x = 200
+    n_x = 50
     n_y = 50
+    
+    initial_condition = np.zeros(shape=(n_y, n_x))
+    initial_condition[
+        int(n_y / 2 - .05 * n_y):int(n_y / 2 + .05 * n_y),
+        int(n_x / 2 - .05 * n_x):int(n_x / 2 + .05 * n_x)
+    ] = 100.0
 
     solve(
         GeometricProperties(
             n_x=n_x,
             n_y=n_y,
-            size_x=1.0,
-            size_y=0.1,
+            size_x=n_x / 100.,
+            size_y=n_y / 100.,
         ),
         PhysicalProperties(
-            k=10.0,
+            k=1.e-3,
             rho=1.0,
             c_p=1.0,
         ),
-        ConstantInitialCondition(
-            T=0.0,
-            n_x=n_x,
-            n_y=n_y,
+        ConstantMapInitialCondition(
+            T=initial_condition,
         ),
         TemperatureBoundaryConditions(
-            PrescribedTemperatureBoundaryCondition(lambda t: 0.0),
-#             PrescribedFlowBoundaryCondition(lambda t: 0.0),
-            PrescribedTemperatureBoundaryCondition(lambda t: np.sin(t*10)),
+            PrescribedFlowBoundaryCondition(lambda t: 0.0),
+            PrescribedFlowBoundaryCondition(lambda t: 0.0),
             PrescribedFlowBoundaryCondition(lambda t: 0.0),
             PrescribedFlowBoundaryCondition(lambda t: 0.0),
         ),
         TimestepProperties(
             delta_t=0.01,
-            final_time=2.0,
+            final_time=0.5,
         ),
         on_timestep_callback=result_handler,
     )

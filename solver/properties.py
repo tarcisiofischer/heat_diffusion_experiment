@@ -21,6 +21,11 @@ class ConstantInitialCondition:
         self.T = np.ones(shape=(n_y, n_x)) * T
 
 
+class ConstantMapInitialCondition:
+    def __init__(self, T):
+        self.T = T
+
+
 class FromFileInitialCondition:
     def __init__(self, filename):
         self.T = np.loadtxt(filename)
