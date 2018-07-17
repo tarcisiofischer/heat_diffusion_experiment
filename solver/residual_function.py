@@ -77,7 +77,8 @@ def residual_function(
     c_p = grid['c_p']
     x_old = old_grid['T']
 
-    x = X.getArray(readonly=True).reshape((n_y, n_x))
+#     x = X.getArray(readonly=True).reshape((n_y, n_x))
+    x = X[:]
     eqs = np.zeros(shape=(n_y, n_x))
 
     add_transient_term(eqs, rho, x, x_old, dx, dy, dt)

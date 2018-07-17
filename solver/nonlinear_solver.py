@@ -5,7 +5,7 @@ from solver.grid import build_grid
 from solver.residual_function import residual_function
 
 
-def create_solver(use_multigrid, use_newton, n_x, n_y):
+def create_petsc_nonlinear_solver(use_multigrid, use_newton, n_x, n_y):
     snes = PETSc.SNES().create()
 
     options = PETSc.Options()
@@ -28,7 +28,7 @@ def create_solver(use_multigrid, use_newton, n_x, n_y):
     return snes
 
 
-def solve(
+def solve2(
     geometric_properties,
     physical_properties,
     initial_condition,
@@ -54,7 +54,7 @@ def solve(
 
     n_x = geometric_properties.n_x
     n_y = geometric_properties.n_y
-    snes = create_solver(use_multigrid, use_newton, n_x, n_y)
+    nonlinear_solver = create_petsc_nonlinear_solver(use_multigrid, use_newton, n_x, n_y)
     r = PETSc.Vec().createSeq(n_x * n_y)  # residual vector
     x = PETSc.Vec().createSeq(n_x * n_y)  # solution vector
     b = PETSc.Vec().createSeq(n_x * n_y)  # right-hand side
@@ -63,13 +63,13 @@ def solve(
     old_grid = deepcopy(grid)
     on_timestep_callback(current_time, grid['T'])
 
-    # solution = initial_condition
     while current_time < timestep_properties.final_time:
-        snes.setFunction(residual_function, r, [current_time, grid, old_grid, timestep_properties, boundary_condition])
+        nonlinear_solver.setFunction(residual_function, r, [current_time, grid, old_grid, timestep_properties, boundary_condition])
         initial_guess = np.array(old_grid['T'])
         x.setArray(initial_guess)
         b.set(0)
-        snes.solve(b, x)
+        nonlinear_solver.solve(b, x)
+        
         solution = x[:].reshape(n_y, n_x)
         solution.flags['WRITEABLE'] = False
 
@@ -79,7 +79,74 @@ def solve(
 
         # Advance in time
         current_time += timestep_properties.delta_t
+        on_timestep_callback(current_time, solution)
 
+    return grid
+
+
+def solve(
+    geometric_properties,
+    physical_properties,
+    initial_condition,
+    boundary_condition,
+    timestep_properties,
+
+    # Output options
+    on_timestep_callback=None,
+
+    # Solver options
+    use_multigrid=True,
+    use_newton=True,
+):
+    import scipy.optimize
+    if on_timestep_callback is None:
+        on_timestep_callback = lambda *args, **kwargs: None
+
+    grid = build_grid(
+        geometric_properties,
+        physical_properties,
+        initial_condition,
+        boundary_condition,
+    )
+
+    n_x = geometric_properties.n_x
+    n_y = geometric_properties.n_y
+    current_time = 0.0
+    old_grid = deepcopy(grid)
+    on_timestep_callback(current_time, grid['T'])
+
+    while current_time < timestep_properties.final_time:
+#         nonlinear_solver.setFunction(residual_function, r, [current_time, grid, old_grid, timestep_properties, boundary_condition])
+        initial_guess = np.array(old_grid['T'])
+#         x.setArray(initial_guess)
+#         b.set(0)
+#         nonlinear_solver.solve(b, x)
+        
+        def residual_function_wrapped(x):
+            f = np.zeros(shape=(n_x * n_y))
+            residual_function(
+                None,
+                x,
+                f,
+                current_time,
+                grid,
+                old_grid,
+                timestep_properties,
+                boundary_condition
+            )
+            return f
+
+        solution = scipy.optimize.newton_krylov(residual_function_wrapped, initial_guess)
+        
+#         solution = x[:].reshape(n_y, n_x)
+        solution.flags['WRITEABLE'] = False
+
+        # Retrieve the solution
+        old_grid = deepcopy(grid)
+        grid['T'][:] = solution
+
+        # Advance in time
+        current_time += timestep_properties.delta_t
         on_timestep_callback(current_time, solution)
 
     return grid
