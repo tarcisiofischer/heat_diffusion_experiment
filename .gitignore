@@ -34,3 +34,5 @@ TAGS
 
 .cache
 
+.ipynb_checkpoints/
+
