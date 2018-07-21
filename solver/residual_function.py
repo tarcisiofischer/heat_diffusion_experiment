@@ -64,20 +64,20 @@ def residual_function(
     t,
     grid,
     old_grid,
-    timestep_properties,
-    boundary_conditions
+    timestep_properties
 ):
-    n_x = grid['n_x']
-    n_y = grid['n_y']
+    n_x = grid.n_x
+    n_y = grid.n_y
     dt = timestep_properties.delta_t
-    dx = grid['dx']
-    dy = grid['dy']
-    k = grid['k']
-    rho = grid['rho']
-    c_p = grid['c_p']
-    x_old = old_grid['T']
+    dx = grid.dx
+    dy = grid.dy
+    k = grid.k
+    rho = grid.rho
+    c_p = grid.c_p
+    boundary_conditions = grid.boundary_condition
+    x_old = old_grid.T
 
-    x = X.getArray(readonly=True).reshape((n_y, n_x))
+    x = X[:]
     eqs = np.zeros(shape=(n_y, n_x))
 
     add_transient_term(eqs, rho, x, x_old, dx, dy, dt)

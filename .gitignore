@@ -33,6 +33,7 @@ TAGS
 .tox
 
 .cache
+.pytest_cache/
 
 .ipynb_checkpoints/
 

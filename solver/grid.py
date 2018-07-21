@@ -1,6 +1,19 @@
-import numpy as np
+from collections import namedtuple
 
-
+Grid = namedtuple(
+    'Grid',
+    [
+        'dx',
+        'dy',
+        'n_x',
+        'n_y',
+        'k',
+        'rho',
+        'c_p',
+        'T',
+        'boundary_condition'
+    ],
+)
 
 def build_grid(geometric_properties, physical_properties, initial_condition, boundary_condition):
     # Aliases
@@ -13,15 +26,14 @@ def build_grid(geometric_properties, physical_properties, initial_condition, bou
     dx = size_x / n_x
     dy = size_y / n_y
 
-    # Data among the grid
-    G = {}
-    G['dx'] = dx
-    G['dy'] = dy
-    G['n_x'] = n_x
-    G['n_y'] = n_y
-    G['k'] = physical_properties.k
-    G['rho'] = physical_properties.rho
-    G['c_p'] = physical_properties.c_p
-    G['T'] = initial_condition.T
-
-    return G
+    return Grid(
+        dx,
+        dy,
+        n_x,
+        n_y,
+        physical_properties.k,
+        physical_properties.rho,
+        physical_properties.c_p,
+        initial_condition.T,
+        boundary_condition,
+    )

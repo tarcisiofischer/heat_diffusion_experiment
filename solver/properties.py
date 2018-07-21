@@ -43,7 +43,6 @@ class PrescribedTemperatureBoundaryCondition:
     def __init__(self, T):
         self.T = T
 
-
     def type(self):
         from solver.residual_function import BC_TYPE_PRESCRIBED_PHI
         return BC_TYPE_PRESCRIBED_PHI
@@ -52,7 +51,6 @@ class PrescribedTemperatureBoundaryCondition:
 class PrescribedFlowBoundaryCondition:
     def __init__(self, flow):
         self.prescribed_flow = flow
-
 
     def type(self):
         from solver.residual_function import BC_TYPE_PRESCRIBED_FLOW
